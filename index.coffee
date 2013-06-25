@@ -8,7 +8,7 @@ class API
   _event: (name)=>
     return @collection_name + " " + name
 
-  create: (io)=>
+  init: (io)=>
 
     @io = io
     @channel = @io.of('/socket_api_' + @name_space)

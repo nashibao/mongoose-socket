@@ -3,7 +3,7 @@ var API,
 
 API = (function() {
   function API(options) {
-    this.create = __bind(this.create, this);
+    this.init = __bind(this.init, this);
     this._event = __bind(this._event, this);
     this.name_space = options.name_space;
     this.collection_name = options.collection_name;
@@ -14,7 +14,7 @@ API = (function() {
     return this.collection_name + " " + name;
   };
 
-  API.prototype.create = function(io) {
+  API.prototype.init = function(io) {
     var _this = this;
     this.io = io;
     this.channel = this.io.of('/socket_api_' + this.name_space);
