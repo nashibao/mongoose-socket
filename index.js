@@ -8,6 +8,8 @@ API = (function() {
     this.name_space = options.name_space;
     this.collection_name = options.collection_name;
     this.model = options.model;
+    this.use_stream = options.use_stream || false;
+    this.stream = void 0;
   }
 
   API.prototype._event = function(name) {
@@ -18,6 +20,15 @@ API = (function() {
     var _this = this;
     this.io = io;
     this.channel = this.io.of('/socket_api_' + this.name_space);
+    if (this.use_stream) {
+      this.stream = this.model.find().tailable().stream();
+      this.stream.on('data', function(doc) {
+        return _this.channel.emit(_this._event('update'), {
+          method: 'stream',
+          docs: [doc]
+        });
+      });
+    }
     return this.channel.on('connection', function(socket) {
       socket.on(_this._event('create'), function(data, ack_cb) {
         var doc;
@@ -25,10 +36,12 @@ API = (function() {
         return _this.model.create(doc, function(err) {
           ack_cb(err);
           if (!err) {
-            return _this.channel.emit(_this._event('update'), {
-              method: 'create',
-              docs: [doc]
-            });
+            if (!_this.use_stream) {
+              return _this.channel.emit(_this._event('update'), {
+                method: 'create',
+                docs: [doc]
+              });
+            }
           }
         });
       });

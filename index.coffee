@@ -4,6 +4,8 @@ class API
     @name_space = options.name_space
     @collection_name = options.collection_name
     @model = options.model
+    @use_stream = options.use_stream || false
+    @stream = undefined
 
   _event: (name)=>
     return @collection_name + " " + name
@@ -13,6 +15,12 @@ class API
     @io = io
     @channel = @io.of('/socket_api_' + @name_space)
 
+    if @use_stream
+      @stream = @model.find().tailable().stream()
+
+      @stream.on 'data', (doc)=>
+        @channel.emit @_event('update'), {method: 'stream', docs: [doc]}
+
     @channel.on 'connection', (socket)=>
 
       # C -----
@@ -21,7 +29,8 @@ class API
         @model.create doc, (err)=>
           ack_cb(err)
           if not err
-            @channel.emit @_event('update'), {method: 'create', docs: [doc]}
+            if not @use_stream
+              @channel.emit @_event('update'), {method: 'create', docs: [doc]}
 
       # U -----
       socket.on @_event('update'), (data, ack_cb)=>
