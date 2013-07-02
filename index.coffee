@@ -6,6 +6,7 @@ class API
     @model = options.model
     @use_stream = options.use_stream || false
     @stream = undefined
+    @stream_query = options.stream_query || {}
 
   _event: (name)=>
     return @collection_name + " " + name
@@ -16,7 +17,7 @@ class API
     @channel = @io.of('/socket_api_' + @name_space)
 
     if @use_stream
-      @stream = @model.find().tailable().stream()
+      @stream = @model.find(@stream_query).tailable().stream()
 
       @stream.on 'data', (doc)=>
         @channel.emit @_event('update'), {method: 'stream', docs: [doc]}

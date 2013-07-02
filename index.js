@@ -10,6 +10,7 @@ API = (function() {
     this.model = options.model;
     this.use_stream = options.use_stream || false;
     this.stream = void 0;
+    this.stream_query = options.stream_query || {};
   }
 
   API.prototype._event = function(name) {
@@ -21,7 +22,7 @@ API = (function() {
     this.io = io;
     this.channel = this.io.of('/socket_api_' + this.name_space);
     if (this.use_stream) {
-      this.stream = this.model.find().tailable().stream();
+      this.stream = this.model.find(this.stream_query).tailable().stream();
       this.stream.on('data', function(doc) {
         return _this.channel.emit(_this._event('update'), {
           method: 'stream',
