@@ -10,6 +10,7 @@ class API
     @stream = undefined
     @stream_query = options.stream_query || {}
     @default_query = options.default_query || {}
+    @overwrite_query = options.overwrite_query || {}
 
     # copy default query to all query
     if @default_query.default
@@ -19,6 +20,13 @@ class API
           defaults(q, @default_query.default)
         else
           @default_query[method] = @default_query.default
+    if @overwrite_query.default
+      for method in ['create', 'update', 'remove', 'find', 'count']
+        if method of @overwrite_query
+          q = @overwrite_query[method]
+          defaults(q, @overwrite_query.default)
+        else
+          @overwrite_query[method] = @overwrite_query.default
         
 
   _event: (name)=>
@@ -33,6 +41,8 @@ class API
       conditions = {}
       if @default_query.find
         conditions = @default_query.find.conditions
+      if @overwrite_query.find
+        conditions = defaults(@overwrite_query.find.conditions, conditions)
       @stream = @model.find(conditions).tailable().stream()
 
       @stream.on 'data', (doc)=>
@@ -46,6 +56,8 @@ class API
           doc = defaults(data.doc, @default_query.create.doc)
         else
           doc = data.doc
+        if @overwrite_query.create
+          doc = defaults(@overwrite_query.create.doc, doc)
         @model.create doc, (err)=>
           ack_cb(err)
           if not err
@@ -58,6 +70,10 @@ class API
           conditions = defaults(data.conditions || {}, @default_query.update.conditions)
           update = defaults(data.update || {}, @default_query.update.update)
           options = defaults(data.options || {}, @default_query.update.options)
+        if @overwrite_query.update
+          conditions = defaults(@overwrite_query.update.conditions, conditions)
+          update = defaults(@overwrite_query.update.update, update)
+          options = defaults(@overwrite_query.update.options, options)
         @model.update conditions, update, options, (err, numberAffected, raw)=>
           ack_cb(err, numberAffected, raw)
           if not err
@@ -69,6 +85,8 @@ class API
           conditions = defaults(data.conditions || {}, @default_query.remove.conditions)
         else
           conditions = data.conditions
+        if @overwrite_query.remove
+          conditions = defaults(@overwrite_query.remove.conditions, conditions)
         @model.remove conditions, (err)=>
           ack_cb(err)
           if not err
@@ -85,6 +103,10 @@ class API
           conditions = data.conditions
           fields = data.fields
           options = data.options
+        if @overwrite_query.find
+          conditions = defaults(@overwrite_query.find.conditions, conditions)
+          fields = defaults(@overwrite_query.find.fields, fields)
+          options = defaults(@overwrite_query.find.options, options)
         @model.find conditions, fields, options, (err, docs)=>
           ack_cb(err, docs)
 
@@ -94,6 +116,8 @@ class API
           conditions = defaults(data.conditions || {}, @default_query.count.conditions)
         else
           conditions = data.conditions
+        if @overwrite_query.count
+          conditions = defaults(@overwrite_query.count.conditions, conditions)
         @model.count conditions, (err, count)=>
           ack_cb(err, count)
 
