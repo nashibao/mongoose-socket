@@ -32,6 +32,9 @@ class API
   _event: (name)=>
     return @collection_name + " " + name
 
+  update: (method, docs)=>
+    @channel.emit @_event('update'), {method: method, docs: docs}
+
   init: (io)=>
 
     @io = io
@@ -46,7 +49,7 @@ class API
       @stream = @model.find(conditions).tailable().stream()
 
       @stream.on 'data', (doc)=>
-        @channel.emit @_event('update'), {method: 'stream', docs: [doc]}
+        @update('stream', [doc])
 
     @channel.on 'connection', (socket)=>
 

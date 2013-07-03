@@ -8,6 +8,7 @@ defaults = _.partialRight(_.merge, _.defaults);
 API = (function() {
   function API(options) {
     this.init = __bind(this.init, this);
+    this.update = __bind(this.update, this);
     this._event = __bind(this._event, this);
     var method, q, _i, _j, _len, _len1, _ref, _ref1;
     this.name_space = options.name_space;
@@ -48,6 +49,13 @@ API = (function() {
     return this.collection_name + " " + name;
   };
 
+  API.prototype.update = function(method, docs) {
+    return this.channel.emit(this._event('update'), {
+      method: method,
+      docs: docs
+    });
+  };
+
   API.prototype.init = function(io) {
     var conditions,
       _this = this;
@@ -63,10 +71,7 @@ API = (function() {
       }
       this.stream = this.model.find(conditions).tailable().stream();
       this.stream.on('data', function(doc) {
-        return _this.channel.emit(_this._event('update'), {
-          method: 'stream',
-          docs: [doc]
-        });
+        return _this.update('stream', [doc]);
       });
     }
     return this.channel.on('connection', function(socket) {
