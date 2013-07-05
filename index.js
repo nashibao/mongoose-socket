@@ -1,13 +1,22 @@
-var API, defaults, _,
+var API, defaults, _, _defaults,
+  _this = this,
   __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
 
 _ = require('lodash');
 
-defaults = _.partialRight(_.merge, _.defaults);
+_defaults = _.partialRight(_.merge, _.defaults);
+
+defaults = function(d1, d2) {
+  if (d1 == null) {
+    return d2;
+  }
+  return _defaults(d1, d2);
+};
 
 API = (function() {
   function API(options) {
     this.init = __bind(this.init, this);
+    this.check_middleware = __bind(this.check_middleware, this);
     this.update = __bind(this.update, this);
     this._event = __bind(this._event, this);
     var method, q, _i, _j, _len, _len1, _ref, _ref1;
@@ -19,7 +28,8 @@ API = (function() {
     this.stream_query = options.stream_query || {};
     this.default_query = options.default_query || {};
     this.overwrite_query = options.overwrite_query || {};
-    if (this.default_query["default"]) {
+    this.middlewares = options.middlewares || {};
+    if (this.default_query["default"] != null) {
       _ref = ['create', 'update', 'remove', 'find', 'count'];
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
         method = _ref[_i];
@@ -31,7 +41,7 @@ API = (function() {
         }
       }
     }
-    if (this.overwrite_query["default"]) {
+    if (this.overwrite_query["default"] != null) {
       _ref1 = ['create', 'update', 'remove', 'find', 'count'];
       for (_j = 0, _len1 = _ref1.length; _j < _len1; _j++) {
         method = _ref1[_j];
@@ -56,6 +66,25 @@ API = (function() {
     });
   };
 
+  API.prototype.check_middleware = function(method, data) {
+    var middleware, _i, _j, _len, _len1, _ref, _ref1;
+    if (this.middlewares['default'] != null) {
+      _ref = this.middlewares['default'];
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        middleware = _ref[_i];
+        data = middleware(data);
+      }
+    }
+    if (this.middlewares[method] != null) {
+      _ref1 = this.middlewares[method];
+      for (_j = 0, _len1 = _ref1.length; _j < _len1; _j++) {
+        middleware = _ref1[_j];
+        data = middleware(data);
+      }
+    }
+    return data;
+  };
+
   API.prototype.init = function(io) {
     var conditions,
       _this = this;
@@ -63,10 +92,10 @@ API = (function() {
     this.channel = this.io.of('/socket_api_' + this.name_space);
     if (this.use_stream) {
       conditions = {};
-      if (this.default_query.find) {
+      if (this.default_query.find != null) {
         conditions = this.default_query.find.conditions;
       }
-      if (this.overwrite_query.find) {
+      if (this.overwrite_query.find != null) {
         conditions = defaults(this.overwrite_query.find.conditions, conditions);
       }
       this.stream = this.model.find(conditions).tailable().stream();
@@ -77,12 +106,13 @@ API = (function() {
     return this.channel.on('connection', function(socket) {
       socket.on(_this._event('create'), function(data, ack_cb) {
         var doc;
-        if (_this.default_query.create) {
+        data = _this.check_middleware('create', data);
+        if (_this.default_query.create != null) {
           doc = defaults(data.doc, _this.default_query.create.doc);
         } else {
           doc = data.doc;
         }
-        if (_this.overwrite_query.create) {
+        if (_this.overwrite_query.create != null) {
           doc = defaults(_this.overwrite_query.create.doc, doc);
         }
         return _this.model.create(doc, function(err) {
@@ -99,12 +129,13 @@ API = (function() {
       });
       socket.on(_this._event('update'), function(data, ack_cb) {
         var options, update;
-        if (_this.default_query.update) {
+        data = _this.check_middleware('update', data);
+        if (_this.default_query.update != null) {
           conditions = defaults(data.conditions || {}, _this.default_query.update.conditions);
           update = defaults(data.update || {}, _this.default_query.update.update);
           options = defaults(data.options || {}, _this.default_query.update.options);
         }
-        if (_this.overwrite_query.update) {
+        if (_this.overwrite_query.update != null) {
           conditions = defaults(_this.overwrite_query.update.conditions, conditions);
           update = defaults(_this.overwrite_query.update.update, update);
           options = defaults(_this.overwrite_query.update.options, options);
@@ -121,12 +152,13 @@ API = (function() {
         });
       });
       socket.on(_this._event('remove'), function(data, ack_cb) {
-        if (_this.default_query.remove) {
+        data = _this.check_middleware('remove', data);
+        if (_this.default_query.remove != null) {
           conditions = defaults(data.conditions || {}, _this.default_query.remove.conditions);
         } else {
           conditions = data.conditions;
         }
-        if (_this.overwrite_query.remove) {
+        if (_this.overwrite_query.remove != null) {
           conditions = defaults(_this.overwrite_query.remove.conditions, conditions);
         }
         return _this.model.remove(conditions, function(err) {
@@ -141,7 +173,8 @@ API = (function() {
       });
       socket.on(_this._event('find'), function(data, ack_cb) {
         var fields, options;
-        if (_this.default_query.find) {
+        data = _this.check_middleware('find', data);
+        if (_this.default_query.find != null) {
           conditions = defaults(data.conditions || {}, _this.default_query.find.conditions);
           fields = defaults(data.fields || {}, _this.default_query.find.fields);
           options = defaults(data.options || {}, _this.default_query.find.options);
@@ -150,7 +183,7 @@ API = (function() {
           fields = data.fields;
           options = data.options;
         }
-        if (_this.overwrite_query.find) {
+        if (_this.overwrite_query.find != null) {
           conditions = defaults(_this.overwrite_query.find.conditions, conditions);
           fields = defaults(_this.overwrite_query.find.fields, fields);
           options = defaults(_this.overwrite_query.find.options, options);
@@ -160,12 +193,13 @@ API = (function() {
         });
       });
       return socket.on(_this._event('count'), function(data, ack_cb) {
-        if (_this.default_query.count) {
+        data = _this.check_middleware('count', data);
+        if (_this.default_query.count != null) {
           conditions = defaults(data.conditions || {}, _this.default_query.count.conditions);
         } else {
           conditions = data.conditions;
         }
-        if (_this.overwrite_query.count) {
+        if (_this.overwrite_query.count != null) {
           conditions = defaults(_this.overwrite_query.count.conditions, conditions);
         }
         return _this.model.count(conditions, function(err, count) {
