@@ -3,7 +3,8 @@ _defaults = _.partialRight(_.merge, _.defaults)
 defaults = (d1, d2)=>
   if not d1?
     return d2
-  return _defaults(d1, d2)
+  _d1 = _.cloneDeep(d1)
+  return _defaults(_d1, d2)
 
 class API
   constructor: (options)->
@@ -23,14 +24,14 @@ class API
       for method in ['create', 'update', 'remove', 'find', 'count']
         if method of @default_query
           q = @default_query[method]
-          defaults(q, @default_query.default)
+          q = defaults(q, @default_query.default)
         else
-          @default_query[method] = @default_query.default
+          q = @default_query[method] = @default_query.default
     if @overwrite_query.default?
       for method in ['create', 'update', 'remove', 'find', 'count']
         if method of @overwrite_query
           q = @overwrite_query[method]
-          defaults(q, @overwrite_query.default)
+          q = defaults(q, @overwrite_query.default)
         else
           @overwrite_query[method] = @overwrite_query.default
         
@@ -88,9 +89,9 @@ class API
       socket.on @_event('update'), (data, ack_cb)=>
         data = @check_middleware('update', data)
         if @default_query.update?
-          conditions = defaults(data.conditions || {}, @default_query.update.conditions)
-          update = defaults(data.update || {}, @default_query.update.update)
-          options = defaults(data.options || {}, @default_query.update.options)
+          conditions = defaults(data.conditions, @default_query.update.conditions)
+          update = defaults(data.update, @default_query.update.update)
+          options = defaults(data.options, @default_query.update.options)
         if @overwrite_query.update?
           conditions = defaults(@overwrite_query.update.conditions, conditions)
           update = defaults(@overwrite_query.update.update, update)
@@ -104,7 +105,7 @@ class API
       socket.on @_event('remove'), (data, ack_cb)=>
         data = @check_middleware('remove', data)
         if @default_query.remove?
-          conditions = defaults(data.conditions || {}, @default_query.remove.conditions)
+          conditions = defaults(data.conditions, @default_query.remove.conditions)
         else
           conditions = data.conditions
         if @overwrite_query.remove?
@@ -119,9 +120,9 @@ class API
       socket.on @_event('find'), (data, ack_cb)=>
         data = @check_middleware('find', data)
         if @default_query.find?
-          conditions = defaults(data.conditions || {}, @default_query.find.conditions)
-          fields = defaults(data.fields || {}, @default_query.find.fields)
-          options = defaults(data.options || {}, @default_query.find.options)
+          conditions = defaults(data.conditions, @default_query.find.conditions)
+          fields = defaults(data.fields, @default_query.find.fields)
+          options = defaults(data.options, @default_query.find.options)
         else
           conditions = data.conditions
           fields = data.fields
@@ -137,7 +138,7 @@ class API
       socket.on @_event('count'), (data, ack_cb)=>
         data = @check_middleware('count', data)
         if @default_query.count?
-          conditions = defaults(data.conditions || {}, @default_query.count.conditions)
+          conditions = defaults(data.conditions, @default_query.count.conditions)
         else
           conditions = data.conditions
         if @overwrite_query.count?
