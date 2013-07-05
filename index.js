@@ -1,4 +1,4 @@
-var API, defaults, _, _defaults,
+var API, copy, defaults, _, _defaults,
   _this = this,
   __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
 
@@ -6,12 +6,27 @@ _ = require('lodash');
 
 _defaults = _.partialRight(_.merge, _.defaults);
 
+copy = function(d) {
+  var k, temp;
+  temp = {};
+  for (k in d) {
+    if (_.isFunction(d[k])) {
+      temp[k] = d[k];
+    } else if (_.isObject(d[k])) {
+      temp[k] = copy(d[k]);
+    } else {
+      temp[k] = d[k];
+    }
+  }
+  return temp;
+};
+
 defaults = function(d1, d2) {
   var _d1;
   if (d1 == null) {
     return d2;
   }
-  _d1 = _.cloneDeep(d1);
+  _d1 = copy(d1);
   return _defaults(_d1, d2);
 };
 
@@ -37,7 +52,7 @@ API = (function() {
         method = _ref[_i];
         if (method in this.default_query) {
           q = this.default_query[method];
-          q = defaults(q, this.default_query["default"]);
+          _defaults(q, this.default_query["default"]);
         } else {
           q = this.default_query[method] = this.default_query["default"];
         }
@@ -49,7 +64,7 @@ API = (function() {
         method = _ref1[_j];
         if (method in this.overwrite_query) {
           q = this.overwrite_query[method];
-          q = defaults(q, this.overwrite_query["default"]);
+          _defaults(q, this.overwrite_query["default"]);
         } else {
           this.overwrite_query[method] = this.overwrite_query["default"];
         }
@@ -175,6 +190,8 @@ API = (function() {
       });
       socket.on(_this._event('find'), function(data, ack_cb) {
         var fields, options;
+        console.log('1', data.conditions);
+        console.log('1', _this.overwrite_query.find);
         data = _this.check_middleware('find', data);
         if (_this.default_query.find != null) {
           conditions = defaults(data.conditions, _this.default_query.find.conditions);
@@ -190,6 +207,7 @@ API = (function() {
           fields = defaults(_this.overwrite_query.find.fields, fields);
           options = defaults(_this.overwrite_query.find.options, options);
         }
+        console.log('2', _this.overwrite_query.find);
         return _this.model.find(conditions, fields, options, function(err, docs) {
           return ack_cb(err, docs);
         });

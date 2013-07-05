@@ -1,9 +1,21 @@
 _ = require('lodash')
 _defaults = _.partialRight(_.merge, _.defaults)
+
+copy = (d)=>
+  temp = {}
+  for k of d
+    if _.isFunction(d[k])
+      temp[k] = d[k]
+    else if _.isObject(d[k])
+      temp[k] = copy(d[k])
+    else
+      temp[k] = d[k]
+  return temp
+
 defaults = (d1, d2)=>
   if not d1?
     return d2
-  _d1 = _.cloneDeep(d1)
+  _d1 = copy(d1)
   return _defaults(_d1, d2)
 
 class API
@@ -24,14 +36,14 @@ class API
       for method in ['create', 'update', 'remove', 'find', 'count']
         if method of @default_query
           q = @default_query[method]
-          q = defaults(q, @default_query.default)
+          _defaults(q, @default_query.default)
         else
           q = @default_query[method] = @default_query.default
     if @overwrite_query.default?
       for method in ['create', 'update', 'remove', 'find', 'count']
         if method of @overwrite_query
           q = @overwrite_query[method]
-          q = defaults(q, @overwrite_query.default)
+          _defaults(q, @overwrite_query.default)
         else
           @overwrite_query[method] = @overwrite_query.default
         
@@ -118,6 +130,8 @@ class API
 
       # R -----
       socket.on @_event('find'), (data, ack_cb)=>
+        console.log '1', data.conditions
+        console.log '1', @overwrite_query.find
         data = @check_middleware('find', data)
         if @default_query.find?
           conditions = defaults(data.conditions, @default_query.find.conditions)
@@ -131,6 +145,7 @@ class API
           conditions = defaults(@overwrite_query.find.conditions, conditions)
           fields = defaults(@overwrite_query.find.fields, fields)
           options = defaults(@overwrite_query.find.options, options)
+        console.log '2', @overwrite_query.find
         @model.find conditions, fields, options, (err, docs)=>
           ack_cb(err, docs)
 
