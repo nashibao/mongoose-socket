@@ -1,7 +1,9 @@
-var API,
+var API, async,
   __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
 
 require('sugar');
+
+async = require('async');
 
 API = (function() {
   function API(options) {
@@ -14,6 +16,7 @@ API = (function() {
     this._parse = __bind(this._parse, this);
     this.model = options.model;
     this.collection_name = options.collection_name ? options.collection_name : 'results';
+    this.limit = options.limit || 10;
   }
 
   API.prototype._parse = function(req, param_name) {
@@ -65,15 +68,35 @@ API = (function() {
   };
 
   API.prototype.find = function(req, res) {
-    var conditions, fields, options,
+    var conditions, fields, limit, options, page,
       _this = this;
     conditions = this._parse(req, 'conditions');
     fields = this._parse(req, 'fields');
     options = this._parse(req, 'options');
-    return this.model.find(conditions, fields, options, function(err, docs) {
+    page = this._parse(req, 'page');
+    limit = this.limit;
+    options = options || {};
+    options['limit'] = this.limit;
+    options['skip'] = page * this.limit;
+    return async.parallel([
+      function(cb) {
+        return _this.model.count(conditions, cb);
+      }, function(cb) {
+        return _this.model.find(conditions, fields, options, cb);
+      }
+    ], function(err, results) {
+      var cnt, docs;
+      cnt = results[0];
+      docs = results[1];
+      options = {};
+      options.count = cnt;
+      options.page = page;
+      options.limit = limit;
+      options.page_length = Math.ceil(cnt / limit);
       return res.send({
         err: err,
-        docs: docs
+        docs: docs,
+        options: options
       });
     });
   };

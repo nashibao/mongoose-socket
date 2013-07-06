@@ -1,10 +1,12 @@
 require('sugar')
+async = require 'async'
 
 # rest api
 class API
   constructor: (options)->
     @model = options.model
     @collection_name = if options.collection_name then options.collection_name else 'results'
+    @limit = options.limit || 10
 
   _parse: (req, param_name)=>
     if req.param(param_name)
@@ -39,8 +41,26 @@ class API
     conditions = @_parse(req, 'conditions')
     fields = @_parse(req, 'fields')
     options = @_parse(req, 'options')
-    @model.find conditions, fields, options, (err, docs)=>
-      res.send {err: err, docs: docs}
+    page = @_parse(req, 'page')
+    limit = @limit
+    options = options || {}
+    options['limit'] = @limit
+    options['skip'] = page * @limit
+
+    async.parallel [
+      (cb)=>
+        @model.count conditions, cb
+      (cb)=>
+        @model.find conditions, fields, options, cb
+    ], (err, results)=>
+      cnt = results[0]
+      docs = results[1]
+      options = {}
+      options.count = cnt
+      options.page = page
+      options.limit = limit
+      options.page_length = Math.ceil(cnt / limit)
+      res.send {err: err, docs: docs, options: options}
 
   # R
   count: (req, res) =>

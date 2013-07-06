@@ -228,7 +228,6 @@ API = (function() {
           options.page = page;
           options.limit = limit;
           options.page_length = Math.ceil(cnt / limit);
-          console.log('options', options);
           return ack_cb(err, docs, options);
         });
       });
