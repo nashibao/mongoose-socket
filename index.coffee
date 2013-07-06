@@ -1,6 +1,8 @@
 _ = require('lodash')
 _defaults = _.partialRight(_.merge, _.defaults)
 
+async = require 'async'
+
 copy = (d)=>
   temp = {}
   for k of d
@@ -25,6 +27,7 @@ class API
     @model = options.model
     @use_stream = options.use_stream || false
     @stream = undefined
+    @limit = options.limit || 10
     @stream_query = options.stream_query || {}
     @default_query = options.default_query || {}
     @overwrite_query = options.overwrite_query || {}
@@ -130,8 +133,6 @@ class API
 
       # R -----
       socket.on @_event('find'), (data, ack_cb)=>
-        console.log '1', data.conditions
-        console.log '1', @overwrite_query.find
         data = @check_middleware('find', data)
         if @default_query.find?
           conditions = defaults(data.conditions, @default_query.find.conditions)
@@ -141,12 +142,47 @@ class API
           conditions = data.conditions
           fields = data.fields
           options = data.options
+        page = data.page || 0
+        limit = @limit
+        options = options || {}
+        options['limit'] = @limit
+        options['skip'] = page * @limit
         if @overwrite_query.find?
           conditions = defaults(@overwrite_query.find.conditions, conditions)
           fields = defaults(@overwrite_query.find.fields, fields)
           options = defaults(@overwrite_query.find.options, options)
-        console.log '2', @overwrite_query.find
-        @model.find conditions, fields, options, (err, docs)=>
+        async.parallel [
+          (cb)=>
+            @model.count conditions, cb
+          (cb)=>
+            @model.find conditions, fields, options, cb
+        ], (err, results)=>
+          cnt = results[0]
+          docs = results[1]
+          options = {}
+          options.count = cnt
+          options.page = page
+          options.limit = limit
+          options.page_length = Math.ceil(cnt / limit)
+          console.log 'options', options
+          ack_cb(err, docs, options)
+
+        
+        
+
+      # aggregate -----
+      socket.on @_event('aggregate'), (data, ack_cb)=>
+        data = @check_middleware('aggregate', data)
+        if @default_query.aggregate?
+          array = defaults(data.array, @default_query.aggregate.array)
+          options = defaults(data.options, @default_query.aggregate.options)
+        else
+          array = data.array
+          options = data.options
+        if @overwrite_query.aggregate?
+          array = defaults(@overwrite_query.aggregate.array, array)
+          options = defaults(@overwrite_query.aggregate.options, options)
+        @model.aggregate array, options, (err, docs)=>
           ack_cb(err, docs)
 
       # count -----

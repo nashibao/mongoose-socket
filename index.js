@@ -1,10 +1,12 @@
-var API, copy, defaults, _, _defaults,
+var API, async, copy, defaults, _, _defaults,
   _this = this,
   __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
 
 _ = require('lodash');
 
 _defaults = _.partialRight(_.merge, _.defaults);
+
+async = require('async');
 
 copy = function(d) {
   var k, temp;
@@ -42,6 +44,7 @@ API = (function() {
     this.model = options.model;
     this.use_stream = options.use_stream || false;
     this.stream = void 0;
+    this.limit = options.limit || 10;
     this.stream_query = options.stream_query || {};
     this.default_query = options.default_query || {};
     this.overwrite_query = options.overwrite_query || {};
@@ -189,9 +192,7 @@ API = (function() {
         });
       });
       socket.on(_this._event('find'), function(data, ack_cb) {
-        var fields, options;
-        console.log('1', data.conditions);
-        console.log('1', _this.overwrite_query.find);
+        var fields, limit, options, page;
         data = _this.check_middleware('find', data);
         if (_this.default_query.find != null) {
           conditions = defaults(data.conditions, _this.default_query.find.conditions);
@@ -202,13 +203,50 @@ API = (function() {
           fields = data.fields;
           options = data.options;
         }
+        page = data.page || 0;
+        limit = _this.limit;
+        options = options || {};
+        options['limit'] = _this.limit;
+        options['skip'] = page * _this.limit;
         if (_this.overwrite_query.find != null) {
           conditions = defaults(_this.overwrite_query.find.conditions, conditions);
           fields = defaults(_this.overwrite_query.find.fields, fields);
           options = defaults(_this.overwrite_query.find.options, options);
         }
-        console.log('2', _this.overwrite_query.find);
-        return _this.model.find(conditions, fields, options, function(err, docs) {
+        return async.parallel([
+          function(cb) {
+            return _this.model.count(conditions, cb);
+          }, function(cb) {
+            return _this.model.find(conditions, fields, options, cb);
+          }
+        ], function(err, results) {
+          var cnt, docs;
+          cnt = results[0];
+          docs = results[1];
+          options = {};
+          options.count = cnt;
+          options.page = page;
+          options.limit = limit;
+          options.page_length = Math.ceil(cnt / limit);
+          console.log('options', options);
+          return ack_cb(err, docs, options);
+        });
+      });
+      socket.on(_this._event('aggregate'), function(data, ack_cb) {
+        var array, options;
+        data = _this.check_middleware('aggregate', data);
+        if (_this.default_query.aggregate != null) {
+          array = defaults(data.array, _this.default_query.aggregate.array);
+          options = defaults(data.options, _this.default_query.aggregate.options);
+        } else {
+          array = data.array;
+          options = data.options;
+        }
+        if (_this.overwrite_query.aggregate != null) {
+          array = defaults(_this.overwrite_query.aggregate.array, array);
+          options = defaults(_this.overwrite_query.aggregate.options, options);
+        }
+        return _this.model.aggregate(array, options, function(err, docs) {
           return ack_cb(err, docs);
         });
       });
