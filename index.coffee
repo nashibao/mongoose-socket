@@ -3,23 +3,6 @@ _defaults = _.partialRight(_.merge, _.defaults)
 
 async = require 'async'
 
-copy = (d)=>
-  temp = {}
-  for k of d
-    if _.isFunction(d[k])
-      temp[k] = d[k]
-    else if _.isObject(d[k])
-      temp[k] = copy(d[k])
-    else
-      temp[k] = d[k]
-  return temp
-
-defaults = (d1, d2)=>
-  if not d1?
-    return d2
-  _d1 = copy(d1)
-  return _defaults(_d1, d2)
-
 class API
   constructor: (options)->
     @name_space = options.name_space
@@ -28,28 +11,8 @@ class API
     @use_stream = options.use_stream || false
     @stream = undefined
     @limit = options.limit || 10
-    @stream_query = options.stream_query || {}
-    @default_query = options.default_query || {}
-    @overwrite_query = options.overwrite_query || {}
-
+    @default = options.default || {}
     @middlewares = options.middlewares || {}
-
-    # copy default query to all query
-    if @default_query.default?
-      for method in ['create', 'update', 'remove', 'find', 'count']
-        if method of @default_query
-          q = @default_query[method]
-          _defaults(q, @default_query.default)
-        else
-          q = @default_query[method] = @default_query.default
-    if @overwrite_query.default?
-      for method in ['create', 'update', 'remove', 'find', 'count']
-        if method of @overwrite_query
-          q = @overwrite_query[method]
-          _defaults(q, @overwrite_query.default)
-        else
-          @overwrite_query[method] = @overwrite_query.default
-        
 
   _event: (name)=>
     return @collection_name + " " + name
@@ -60,11 +23,17 @@ class API
 
   check_middleware: (method, data)=>
     if @middlewares['default']?
-      for middleware in @middlewares['default']
-        data = middleware(data)
+      if _.isFunction(@middlewares['default'])
+        data = @middlewares['default'](data)
+      else
+        for middleware in @middlewares['default']
+          data = middleware(data)
     if @middlewares[method]?
-      for middleware in @middlewares[method]
-        data = middleware(data)
+      if _.isFunction(@middlewares[method])
+        data = @middlewares[method](data)
+      else
+        for middleware in @middlewares[method]
+          data = middleware(data)
     return data
 
   init: (io)=>
@@ -73,11 +42,7 @@ class API
     @channel = @io.of('/socket_api_' + @name_space)
 
     if @use_stream
-      conditions = {}
-      if @default_query.find?
-        conditions = @default_query.find.conditions
-      if @overwrite_query.find?
-        conditions = defaults(@overwrite_query.find.conditions, conditions)
+      conditions = @default.conditions || {}
       @stream = @model.find(conditions).tailable().stream()
 
       @stream.on 'data', (doc)=>
@@ -88,12 +53,7 @@ class API
       # C -----
       socket.on @_event('create'), (data, ack_cb)=>
         data = @check_middleware('create', data)
-        if @default_query.create?
-          doc = defaults(data.doc, @default_query.create.doc)
-        else
-          doc = data.doc
-        if @overwrite_query.create?
-          doc = defaults(@overwrite_query.create.doc, doc)
+        doc = data.doc || @default.doc || {}
         @model.create doc, (err)=>
           ack_cb(err)
           if not err
@@ -103,14 +63,9 @@ class API
       # U -----
       socket.on @_event('update'), (data, ack_cb)=>
         data = @check_middleware('update', data)
-        if @default_query.update?
-          conditions = defaults(data.conditions, @default_query.update.conditions)
-          update = defaults(data.update, @default_query.update.update)
-          options = defaults(data.options, @default_query.update.options)
-        if @overwrite_query.update?
-          conditions = defaults(@overwrite_query.update.conditions, conditions)
-          update = defaults(@overwrite_query.update.update, update)
-          options = defaults(@overwrite_query.update.options, options)
+        conditions = data.conditions || @default.conditions || {}
+        update = data.update || @default.update || {}
+        options = data.options || @default.options || {}
         @model.update conditions, update, options, (err, numberAffected, raw)=>
           ack_cb(err, numberAffected, raw)
           if not err
@@ -119,12 +74,7 @@ class API
       # D -----
       socket.on @_event('remove'), (data, ack_cb)=>
         data = @check_middleware('remove', data)
-        if @default_query.remove?
-          conditions = defaults(data.conditions, @default_query.remove.conditions)
-        else
-          conditions = data.conditions
-        if @overwrite_query.remove?
-          conditions = defaults(@overwrite_query.remove.conditions, conditions)
+        conditions = data.conditions || @default.conditions || {}
         @model.remove conditions, (err)=>
           ack_cb(err)
           if not err
@@ -134,23 +84,13 @@ class API
       # R -----
       socket.on @_event('find'), (data, ack_cb)=>
         data = @check_middleware('find', data)
-        if @default_query.find?
-          conditions = defaults(data.conditions, @default_query.find.conditions)
-          fields = defaults(data.fields, @default_query.find.fields)
-          options = defaults(data.options, @default_query.find.options)
-        else
-          conditions = data.conditions
-          fields = data.fields
-          options = data.options
+        conditions = data.conditions || @default.conditions || {}
+        fields = data.fields || @default.fields || {}
+        options = data.options || @default.options || {}
         page = data.page || 0
         limit = @limit
-        options = options || {}
         options['limit'] = @limit
         options['skip'] = page * @limit
-        if @overwrite_query.find?
-          conditions = defaults(@overwrite_query.find.conditions, conditions)
-          fields = defaults(@overwrite_query.find.fields, fields)
-          options = defaults(@overwrite_query.find.options, options)
         async.parallel [
           (cb)=>
             @model.count conditions, cb
@@ -166,33 +106,18 @@ class API
           options.page_length = Math.ceil(cnt / limit)
           ack_cb(err, docs, options)
 
-        
-        
-
       # aggregate -----
       socket.on @_event('aggregate'), (data, ack_cb)=>
         data = @check_middleware('aggregate', data)
-        if @default_query.aggregate?
-          array = defaults(data.array, @default_query.aggregate.array)
-          options = defaults(data.options, @default_query.aggregate.options)
-        else
-          array = data.array
-          options = data.options
-        if @overwrite_query.aggregate?
-          array = defaults(@overwrite_query.aggregate.array, array)
-          options = defaults(@overwrite_query.aggregate.options, options)
+        array = data.array || @default.array || {}
+        options = data.options || @default.options || {}
         @model.aggregate array, options, (err, docs)=>
           ack_cb(err, docs)
 
       # count -----
       socket.on @_event('count'), (data, ack_cb)=>
         data = @check_middleware('count', data)
-        if @default_query.count?
-          conditions = defaults(data.conditions, @default_query.count.conditions)
-        else
-          conditions = data.conditions
-        if @overwrite_query.count?
-          conditions = defaults(@overwrite_query.count.conditions, conditions)
+        conditions = data.conditions || @default.conditions || {}
         @model.count conditions, (err, count)=>
           ack_cb(err, count)
 
