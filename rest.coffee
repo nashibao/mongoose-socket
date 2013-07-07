@@ -8,6 +8,13 @@ class API
     @collection_name = if options.collection_name then options.collection_name else 'results'
     @limit = options.limit || 10
 
+    @_middlewares = []
+
+  # middleware
+  # todo: method name, before, after
+  use: (middleware)=>
+    @_middlewares.push(middleware)
+
   _parse: (req, param_name, isPost)=>
     val = undefined
     if isPost
@@ -24,6 +31,8 @@ class API
   # C
   create: (req, res) =>
     query = @_parse(req, 'query', true)
+    for middleware in @_middlewares
+      query = middleware(query)
     doc = query.doc || {}
     @model.create doc, (err)=>
       res.send {err: err}
@@ -31,6 +40,8 @@ class API
   # U
   update: (req, res) =>
     query = @_parse(req, 'query', true)
+    for middleware in @_middlewares
+      query = middleware(query)
     conditions = query.conditions || {}
     update = query.update || undefined
     options = query.options || {}
@@ -40,6 +51,8 @@ class API
   # D
   remove: (req, res) =>
     query = @_parse(req, 'query', true)
+    for middleware in @_middlewares
+      query = middleware(query)
     conditions = query.conditions || {}
     @model.remove conditions, (err)=>
       res.send {err: err}
@@ -47,6 +60,8 @@ class API
   # R
   find: (req, res) =>
     query = @_parse(req, 'query')
+    for middleware in @_middlewares
+      query = middleware(query)
     conditions = query.conditions || {}
     fields = query.fields || {}
     options = query.options || {}
@@ -73,6 +88,8 @@ class API
   # R
   count: (req, res) =>
     query = @_parse(req, 'query')
+    for middleware in @_middlewares
+      query = middleware(query)
     conditions = query.conditions || {}
     @model.count conditions, (err, count)=>
       res.send {err: err, count: count}
@@ -80,6 +97,8 @@ class API
   # R
   aggregate: (req, res) =>
     query = @_parse(req, 'query')
+    for middleware in @_middlewares
+      query = middleware(query)
     array = query.array || []
     options = query.options || {}
     @model.aggregate array, options, (err, docs)=>

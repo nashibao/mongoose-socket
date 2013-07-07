@@ -15,10 +15,16 @@ API = (function() {
     this.update = __bind(this.update, this);
     this.create = __bind(this.create, this);
     this._parse = __bind(this._parse, this);
+    this.use = __bind(this.use, this);
     this.model = options.model;
     this.collection_name = options.collection_name ? options.collection_name : 'results';
     this.limit = options.limit || 10;
+    this._middlewares = [];
   }
+
+  API.prototype.use = function(middleware) {
+    return this._middlewares.push(middleware);
+  };
 
   API.prototype._parse = function(req, param_name, isPost) {
     var val;
@@ -39,9 +45,14 @@ API = (function() {
   };
 
   API.prototype.create = function(req, res) {
-    var doc, query,
+    var doc, middleware, query, _i, _len, _ref,
       _this = this;
     query = this._parse(req, 'query', true);
+    _ref = this._middlewares;
+    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+      middleware = _ref[_i];
+      query = middleware(query);
+    }
     doc = query.doc || {};
     return this.model.create(doc, function(err) {
       return res.send({
@@ -51,9 +62,14 @@ API = (function() {
   };
 
   API.prototype.update = function(req, res) {
-    var conditions, options, query, update,
+    var conditions, middleware, options, query, update, _i, _len, _ref,
       _this = this;
     query = this._parse(req, 'query', true);
+    _ref = this._middlewares;
+    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+      middleware = _ref[_i];
+      query = middleware(query);
+    }
     conditions = query.conditions || {};
     update = query.update || void 0;
     options = query.options || {};
@@ -67,9 +83,14 @@ API = (function() {
   };
 
   API.prototype.remove = function(req, res) {
-    var conditions, query,
+    var conditions, middleware, query, _i, _len, _ref,
       _this = this;
     query = this._parse(req, 'query', true);
+    _ref = this._middlewares;
+    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+      middleware = _ref[_i];
+      query = middleware(query);
+    }
     conditions = query.conditions || {};
     return this.model.remove(conditions, function(err) {
       return res.send({
@@ -79,9 +100,14 @@ API = (function() {
   };
 
   API.prototype.find = function(req, res) {
-    var conditions, fields, limit, options, page, query,
+    var conditions, fields, limit, middleware, options, page, query, _i, _len, _ref,
       _this = this;
     query = this._parse(req, 'query');
+    _ref = this._middlewares;
+    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+      middleware = _ref[_i];
+      query = middleware(query);
+    }
     conditions = query.conditions || {};
     fields = query.fields || {};
     options = query.options || {};
@@ -113,9 +139,14 @@ API = (function() {
   };
 
   API.prototype.count = function(req, res) {
-    var conditions, query,
+    var conditions, middleware, query, _i, _len, _ref,
       _this = this;
     query = this._parse(req, 'query');
+    _ref = this._middlewares;
+    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+      middleware = _ref[_i];
+      query = middleware(query);
+    }
     conditions = query.conditions || {};
     return this.model.count(conditions, function(err, count) {
       return res.send({
@@ -126,9 +157,14 @@ API = (function() {
   };
 
   API.prototype.aggregate = function(req, res) {
-    var array, options, query,
+    var array, middleware, options, query, _i, _len, _ref,
       _this = this;
     query = this._parse(req, 'query');
+    _ref = this._middlewares;
+    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+      middleware = _ref[_i];
+      query = middleware(query);
+    }
     array = query.array || [];
     options = query.options || {};
     return this.model.aggregate(array, options, function(err, docs) {
