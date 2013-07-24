@@ -86,7 +86,7 @@ class API
         conditions = data.conditions || @default.conditions || {}
         fields = data.fields || @default.fields || {}
         options = data.options || @default.options || {}
-        @model.findOne conditions, fields, options (err, doc)=>
+        @model.findOne conditions, fields, options, (err, doc)=>
           ack_cb(err, doc)
 
 
