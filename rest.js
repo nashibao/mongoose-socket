@@ -11,6 +11,7 @@ API = (function() {
     this.aggregate = __bind(this.aggregate, this);
     this.count = __bind(this.count, this);
     this.find = __bind(this.find, this);
+    this.findOne = __bind(this.findOne, this);
     this.remove = __bind(this.remove, this);
     this.update = __bind(this.update, this);
     this.create = __bind(this.create, this);
@@ -95,6 +96,26 @@ API = (function() {
     return this.model.remove(conditions, function(err) {
       return res.send({
         err: err
+      });
+    });
+  };
+
+  API.prototype.findOne = function(req, res) {
+    var conditions, fields, middleware, options, query, _i, _len, _ref,
+      _this = this;
+    query = this._parse(req, 'query');
+    _ref = this._middlewares;
+    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+      middleware = _ref[_i];
+      query = middleware(query, req, res);
+    }
+    conditions = query.conditions || {};
+    fields = query.fields || {};
+    options = query.options || {};
+    return this.model.findOne(conditions, fields, options, function(err, doc) {
+      return res.send({
+        err: err,
+        doc: doc
       });
     });
   };
@@ -192,6 +213,9 @@ API = (function() {
     }
     if (check("remove")) {
       app["delete"](header + '/remove', this.remove);
+    }
+    if (check("findOne")) {
+      app.get(header + '/findOne', this.findOne);
     }
     if (check("find")) {
       app.get(header + '/find', this.find);

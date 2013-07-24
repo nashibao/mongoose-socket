@@ -58,6 +58,17 @@ class API
       res.send {err: err}
 
   # R
+  findOne: (req, res) =>
+    query = @_parse(req, 'query')
+    for middleware in @_middlewares
+      query = middleware(query, req, res)
+    conditions = query.conditions || {}
+    fields = query.fields || {}
+    options = query.options || {}
+    @model.findOne conditions, fields, options, (err, doc)=>
+      res.send {err: err, doc: doc}
+
+  # R
   find: (req, res) =>
     query = @_parse(req, 'query')
     for middleware in @_middlewares
@@ -117,6 +128,8 @@ class API
       app.put header + '/update', @update
     if check("remove")
       app.delete header + '/remove', @remove
+    if check("findOne")
+      app.get header + '/findOne', @findOne
     if check("find")
       app.get header + '/find', @find
     if check("count")

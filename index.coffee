@@ -80,6 +80,15 @@ class API
           if not err
             @channel.emit @_event('update'), {method: 'remove', conditions: conditions}
 
+      # findOne -----
+      socket.on @_event('findOne'), (data, ack_cb)=>
+        data = @check_middleware('find', data)
+        conditions = data.conditions || @default.conditions || {}
+        fields = data.fields || @default.fields || {}
+        options = data.options || @default.options || {}
+        @model.findOne conditions, fields, options (err, doc)=>
+          ack_cb(err, doc)
+
 
       # R -----
       socket.on @_event('find'), (data, ack_cb)=>

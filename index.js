@@ -120,6 +120,16 @@ API = (function() {
           }
         });
       });
+      socket.on(_this._event('findOne'), function(data, ack_cb) {
+        var fields, options;
+        data = _this.check_middleware('find', data);
+        conditions = data.conditions || _this["default"].conditions || {};
+        fields = data.fields || _this["default"].fields || {};
+        options = data.options || _this["default"].options || {};
+        return _this.model.findOne(conditions, fields, options(function(err, doc) {
+          return ack_cb(err, doc);
+        }));
+      });
       socket.on(_this._event('find'), function(data, ack_cb) {
         var fields, limit, options, page;
         data = _this.check_middleware('find', data);
