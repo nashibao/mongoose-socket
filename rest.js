@@ -52,7 +52,7 @@ API = (function() {
     _ref = this._middlewares;
     for (_i = 0, _len = _ref.length; _i < _len; _i++) {
       middleware = _ref[_i];
-      query = middleware(query, req, res);
+      query = middleware(query, req, res, 'create');
     }
     doc = query.doc || {};
     return this.model.create(doc, function(err) {
@@ -69,7 +69,7 @@ API = (function() {
     _ref = this._middlewares;
     for (_i = 0, _len = _ref.length; _i < _len; _i++) {
       middleware = _ref[_i];
-      query = middleware(query, req, res);
+      query = middleware(query, req, res, 'update');
     }
     conditions = query.conditions || {};
     update = query.update || void 0;
@@ -90,7 +90,7 @@ API = (function() {
     _ref = this._middlewares;
     for (_i = 0, _len = _ref.length; _i < _len; _i++) {
       middleware = _ref[_i];
-      query = middleware(query, req, res);
+      query = middleware(query, req, res, 'remove');
     }
     conditions = query.conditions || {};
     return this.model.remove(conditions, function(err) {
@@ -107,7 +107,7 @@ API = (function() {
     _ref = this._middlewares;
     for (_i = 0, _len = _ref.length; _i < _len; _i++) {
       middleware = _ref[_i];
-      query = middleware(query, req, res);
+      query = middleware(query, req, res, 'findOne');
     }
     conditions = query.conditions || {};
     fields = query.fields || {};
@@ -127,7 +127,7 @@ API = (function() {
     _ref = this._middlewares;
     for (_i = 0, _len = _ref.length; _i < _len; _i++) {
       middleware = _ref[_i];
-      query = middleware(query, req, res);
+      query = middleware(query, req, res, 'find');
     }
     conditions = query.conditions || {};
     fields = query.fields || {};
@@ -166,7 +166,7 @@ API = (function() {
     _ref = this._middlewares;
     for (_i = 0, _len = _ref.length; _i < _len; _i++) {
       middleware = _ref[_i];
-      query = middleware(query, req, res);
+      query = middleware(query, req, res, 'count');
     }
     conditions = query.conditions || {};
     return this.model.count(conditions, function(err, count) {
@@ -184,7 +184,7 @@ API = (function() {
     _ref = this._middlewares;
     for (_i = 0, _len = _ref.length; _i < _len; _i++) {
       middleware = _ref[_i];
-      query = middleware(query, req, res);
+      query = middleware(query, req, res, 'aggregate');
     }
     array = query.array || [];
     options = query.options || {};

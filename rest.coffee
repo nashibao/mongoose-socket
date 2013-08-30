@@ -32,7 +32,7 @@ class API
   create: (req, res) =>
     query = @_parse(req, 'query', true)
     for middleware in @_middlewares
-      query = middleware(query, req, res)
+      query = middleware(query, req, res, 'create')
     doc = query.doc || {}
     @model.create doc, (err)=>
       res.send {err: err}
@@ -41,7 +41,7 @@ class API
   update: (req, res) =>
     query = @_parse(req, 'query', true)
     for middleware in @_middlewares
-      query = middleware(query, req, res)
+      query = middleware(query, req, res, 'update')
     conditions = query.conditions || {}
     update = query.update || undefined
     options = query.options || {}
@@ -52,7 +52,7 @@ class API
   remove: (req, res) =>
     query = @_parse(req, 'query', true)
     for middleware in @_middlewares
-      query = middleware(query, req, res)
+      query = middleware(query, req, res, 'remove')
     conditions = query.conditions || {}
     @model.remove conditions, (err)=>
       res.send {err: err}
@@ -61,7 +61,7 @@ class API
   findOne: (req, res) =>
     query = @_parse(req, 'query')
     for middleware in @_middlewares
-      query = middleware(query, req, res)
+      query = middleware(query, req, res, 'findOne')
     conditions = query.conditions || {}
     fields = query.fields || {}
     options = query.options || {}
@@ -72,7 +72,7 @@ class API
   find: (req, res) =>
     query = @_parse(req, 'query')
     for middleware in @_middlewares
-      query = middleware(query, req, res)
+      query = middleware(query, req, res, 'find')
     conditions = query.conditions || {}
     fields = query.fields || {}
     options = query.options || {}
@@ -100,7 +100,7 @@ class API
   count: (req, res) =>
     query = @_parse(req, 'query')
     for middleware in @_middlewares
-      query = middleware(query, req, res)
+      query = middleware(query, req, res, 'count')
     conditions = query.conditions || {}
     @model.count conditions, (err, count)=>
       res.send {err: err, count: count}
@@ -109,7 +109,7 @@ class API
   aggregate: (req, res) =>
     query = @_parse(req, 'query')
     for middleware in @_middlewares
-      query = middleware(query, req, res)
+      query = middleware(query, req, res, 'aggregate')
     array = query.array || []
     options = query.options || {}
     @model.aggregate array, options, (err, docs)=>
