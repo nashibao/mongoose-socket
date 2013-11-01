@@ -5,6 +5,7 @@ async = require 'async'
 class API
   constructor: (options)->
     @model = options.model
+    @name_space = options.name_space || ''
     @collection_name = if options.collection_name then options.collection_name else 'results'
     @limit = options.limit || 10
 
@@ -119,6 +120,8 @@ class API
   init: (app, options)=>
     header = if (options and options.header) then options.header else '/api/'
     header = header + @collection_name
+    if @name_space
+      header += '/' + @name_space
     enables = if (options and options.enables) then options.enables else undefined
     check = (name)=>
       return (not enables) or ( (name of enables) and enables[name])

@@ -18,6 +18,7 @@ API = (function() {
     this._parse = __bind(this._parse, this);
     this.use = __bind(this.use, this);
     this.model = options.model;
+    this.name_space = options.name_space || '';
     this.collection_name = options.collection_name ? options.collection_name : 'results';
     this.limit = options.limit || 10;
     this._middlewares = [];
@@ -201,6 +202,9 @@ API = (function() {
       _this = this;
     header = options && options.header ? options.header : '/api/';
     header = header + this.collection_name;
+    if (this.name_space) {
+      header += '/' + this.name_space;
+    }
     enables = options && options.enables ? options.enables : void 0;
     check = function(name) {
       return (!enables) || ((name in enables) && enables[name]);
