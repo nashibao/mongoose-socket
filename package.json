@@ -1,5 +1,5 @@
 {
-  "name": "mongoose-socket-server",
+  "name": "mongoose-socket",
   "version": "0.0.1",
   "private": true,
   "dependencies": {
