@@ -4,15 +4,17 @@ _defaults = _.partialRight(_.merge, _.defaults)
 async = require 'async'
 
 class API
-  constructor: (options)->
-    @name_space = options.name_space
-    @collection_name = options.collection_name
-    @model = options.model
+  constructor: (options={})->
+    @name_space = options.name_space || ''
+    @collection_name = options.collection_name || ''
+    @model = options.model || false
     @use_stream = options.use_stream || false
-    @stream = undefined
     @limit = options.limit || 10
-    @default = options.default || {}
-    @middlewares = options.middlewares || {}
+    @_middlewares = options.middlewares || []
+    @stream = false
+
+  use: (middleware)=>
+    @_middlewares.push(middleware)
 
   _event: (name)=>
     return @collection_name + " " + name
@@ -20,21 +22,10 @@ class API
   update: (method, docs)=>
     @channel.emit @_event('update'), {method: method, docs: docs}
 
-
-  check_middleware: (method, data)=>
-    if @middlewares['default']?
-      if _.isFunction(@middlewares['default'])
-        data = @middlewares['default'](data)
-      else
-        for middleware in @middlewares['default']
-          data = middleware(data)
-    if @middlewares[method]?
-      if _.isFunction(@middlewares[method])
-        data = @middlewares[method](data)
-      else
-        for middleware in @middlewares[method]
-          data = middleware(data)
-    return data
+  _middle: (method, data, socket)=>
+    for mw in @_middlewares
+      mw(method, data, socket)
+    return
 
   init: (io)=>
 
@@ -42,8 +33,7 @@ class API
     @channel = @io.of('/socket_api_' + @name_space)
 
     if @use_stream
-      conditions = @default.conditions || {}
-      @stream = @model.find(conditions).tailable().stream()
+      @stream = @model.find({}).tailable().stream()
 
       @stream.on 'data', (doc)=>
         @update('stream', [doc])
@@ -52,8 +42,10 @@ class API
 
       # C -----
       socket.on @_event('create'), (data, ack_cb)=>
-        data = @check_middleware('create', data)
-        doc = data.doc || @default.doc || {}
+        @_middle('create', data, socket)
+        if not (data.doc?)
+          return ack_cb('no doc parameter')
+        doc = data.doc
         @model.create doc, (err)=>
           ack_cb(err)
           if not err
@@ -62,10 +54,10 @@ class API
 
       # U -----
       socket.on @_event('update'), (data, ack_cb)=>
-        data = @check_middleware('update', data)
-        conditions = data.conditions || @default.conditions || {}
-        update = data.update || @default.update || {}
-        options = data.options || @default.options || {}
+        @_middle('update', data, socket)
+        conditions = data.conditions || {}
+        update = data.update || {}
+        options = data.options || {}
         @model.update conditions, update, options, (err, numberAffected, raw)=>
           ack_cb(err, numberAffected, raw)
           if not err
@@ -73,8 +65,8 @@ class API
       
       # D -----
       socket.on @_event('remove'), (data, ack_cb)=>
-        data = @check_middleware('remove', data)
-        conditions = data.conditions || @default.conditions || {}
+        @_middle('remove', data, socket)
+        conditions = data.conditions || {}
         @model.remove conditions, (err)=>
           ack_cb(err)
           if not err
@@ -82,20 +74,20 @@ class API
 
       # findOne -----
       socket.on @_event('findOne'), (data, ack_cb)=>
-        data = @check_middleware('find', data)
-        conditions = data.conditions || @default.conditions || {}
-        fields = data.fields || @default.fields || {}
-        options = data.options || @default.options || {}
+        @_middle('findOne', data, socket)
+        conditions = data.conditions || {}
+        fields = data.fields || {}
+        options = data.options || {}
         @model.findOne conditions, fields, options, (err, doc)=>
           ack_cb(err, doc)
 
 
       # R -----
       socket.on @_event('find'), (data, ack_cb)=>
-        data = @check_middleware('find', data)
-        conditions = data.conditions || @default.conditions || {}
-        fields = data.fields || @default.fields || {}
-        options = data.options || @default.options || {}
+        @_middle('find', data, socket)
+        conditions = data.conditions || {}
+        fields = data.fields || {}
+        options = data.options || {}
         page = data.page || 0
         limit = @limit
         options['limit'] = @limit
@@ -117,16 +109,16 @@ class API
 
       # aggregate -----
       socket.on @_event('aggregate'), (data, ack_cb)=>
-        data = @check_middleware('aggregate', data)
-        array = data.array || @default.array || {}
-        options = data.options || @default.options || {}
+        @_middle('aggregate', data, socket)
+        array = data.array || {}
+        options = data.options || {}
         @model.aggregate array, options, (err, docs)=>
           ack_cb(err, docs)
 
       # count -----
       socket.on @_event('count'), (data, ack_cb)=>
-        data = @check_middleware('count', data)
-        conditions = data.conditions || @default.conditions || {}
+        @_middle('count', data, socket)
+        conditions = data.conditions || {}
         @model.count conditions, (err, count)=>
           ack_cb(err, count)
 

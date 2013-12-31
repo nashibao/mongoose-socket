@@ -9,19 +9,26 @@ async = require('async');
 
 API = (function() {
   function API(options) {
+    if (options == null) {
+      options = {};
+    }
     this.init = __bind(this.init, this);
-    this.check_middleware = __bind(this.check_middleware, this);
+    this._middle = __bind(this._middle, this);
     this.update = __bind(this.update, this);
     this._event = __bind(this._event, this);
-    this.name_space = options.name_space;
-    this.collection_name = options.collection_name;
-    this.model = options.model;
+    this.use = __bind(this.use, this);
+    this.name_space = options.name_space || '';
+    this.collection_name = options.collection_name || '';
+    this.model = options.model || false;
     this.use_stream = options.use_stream || false;
-    this.stream = void 0;
     this.limit = options.limit || 10;
-    this["default"] = options["default"] || {};
-    this.middlewares = options.middlewares || {};
+    this._middlewares = options.middlewares || [];
+    this.stream = false;
   }
+
+  API.prototype.use = function(middleware) {
+    return this._middlewares.push(middleware);
+  };
 
   API.prototype._event = function(name) {
     return this.collection_name + " " + name;
@@ -34,41 +41,21 @@ API = (function() {
     });
   };
 
-  API.prototype.check_middleware = function(method, data) {
-    var middleware, _i, _j, _len, _len1, _ref, _ref1;
-    if (this.middlewares['default'] != null) {
-      if (_.isFunction(this.middlewares['default'])) {
-        data = this.middlewares['default'](data);
-      } else {
-        _ref = this.middlewares['default'];
-        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-          middleware = _ref[_i];
-          data = middleware(data);
-        }
-      }
+  API.prototype._middle = function(method, data, socket) {
+    var mw, _i, _len, _ref;
+    _ref = this._middlewares;
+    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+      mw = _ref[_i];
+      mw(method, data, socket);
     }
-    if (this.middlewares[method] != null) {
-      if (_.isFunction(this.middlewares[method])) {
-        data = this.middlewares[method](data);
-      } else {
-        _ref1 = this.middlewares[method];
-        for (_j = 0, _len1 = _ref1.length; _j < _len1; _j++) {
-          middleware = _ref1[_j];
-          data = middleware(data);
-        }
-      }
-    }
-    return data;
   };
 
   API.prototype.init = function(io) {
-    var conditions,
-      _this = this;
+    var _this = this;
     this.io = io;
     this.channel = this.io.of('/socket_api_' + this.name_space);
     if (this.use_stream) {
-      conditions = this["default"].conditions || {};
-      this.stream = this.model.find(conditions).tailable().stream();
+      this.stream = this.model.find({}).tailable().stream();
       this.stream.on('data', function(doc) {
         return _this.update('stream', [doc]);
       });
@@ -76,8 +63,11 @@ API = (function() {
     return this.channel.on('connection', function(socket) {
       socket.on(_this._event('create'), function(data, ack_cb) {
         var doc;
-        data = _this.check_middleware('create', data);
-        doc = data.doc || _this["default"].doc || {};
+        _this._middle('create', data, socket);
+        if (!(data.doc != null)) {
+          return ack_cb('no doc parameter');
+        }
+        doc = data.doc;
         return _this.model.create(doc, function(err) {
           ack_cb(err);
           if (!err) {
@@ -91,11 +81,11 @@ API = (function() {
         });
       });
       socket.on(_this._event('update'), function(data, ack_cb) {
-        var options, update;
-        data = _this.check_middleware('update', data);
-        conditions = data.conditions || _this["default"].conditions || {};
-        update = data.update || _this["default"].update || {};
-        options = data.options || _this["default"].options || {};
+        var conditions, options, update;
+        _this._middle('update', data, socket);
+        conditions = data.conditions || {};
+        update = data.update || {};
+        options = data.options || {};
         return _this.model.update(conditions, update, options, function(err, numberAffected, raw) {
           ack_cb(err, numberAffected, raw);
           if (!err) {
@@ -108,8 +98,9 @@ API = (function() {
         });
       });
       socket.on(_this._event('remove'), function(data, ack_cb) {
-        data = _this.check_middleware('remove', data);
-        conditions = data.conditions || _this["default"].conditions || {};
+        var conditions;
+        _this._middle('remove', data, socket);
+        conditions = data.conditions || {};
         return _this.model.remove(conditions, function(err) {
           ack_cb(err);
           if (!err) {
@@ -121,21 +112,21 @@ API = (function() {
         });
       });
       socket.on(_this._event('findOne'), function(data, ack_cb) {
-        var fields, options;
-        data = _this.check_middleware('find', data);
-        conditions = data.conditions || _this["default"].conditions || {};
-        fields = data.fields || _this["default"].fields || {};
-        options = data.options || _this["default"].options || {};
+        var conditions, fields, options;
+        _this._middle('findOne', data, socket);
+        conditions = data.conditions || {};
+        fields = data.fields || {};
+        options = data.options || {};
         return _this.model.findOne(conditions, fields, options, function(err, doc) {
           return ack_cb(err, doc);
         });
       });
       socket.on(_this._event('find'), function(data, ack_cb) {
-        var fields, limit, options, page;
-        data = _this.check_middleware('find', data);
-        conditions = data.conditions || _this["default"].conditions || {};
-        fields = data.fields || _this["default"].fields || {};
-        options = data.options || _this["default"].options || {};
+        var conditions, fields, limit, options, page;
+        _this._middle('find', data, socket);
+        conditions = data.conditions || {};
+        fields = data.fields || {};
+        options = data.options || {};
         page = data.page || 0;
         limit = _this.limit;
         options['limit'] = _this.limit;
@@ -160,16 +151,17 @@ API = (function() {
       });
       socket.on(_this._event('aggregate'), function(data, ack_cb) {
         var array, options;
-        data = _this.check_middleware('aggregate', data);
-        array = data.array || _this["default"].array || {};
-        options = data.options || _this["default"].options || {};
+        _this._middle('aggregate', data, socket);
+        array = data.array || {};
+        options = data.options || {};
         return _this.model.aggregate(array, options, function(err, docs) {
           return ack_cb(err, docs);
         });
       });
       return socket.on(_this._event('count'), function(data, ack_cb) {
-        data = _this.check_middleware('count', data);
-        conditions = data.conditions || _this["default"].conditions || {};
+        var conditions;
+        _this._middle('count', data, socket);
+        conditions = data.conditions || {};
         return _this.model.count(conditions, function(err, count) {
           return ack_cb(err, count);
         });
