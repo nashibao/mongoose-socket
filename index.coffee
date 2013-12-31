@@ -23,9 +23,10 @@ class API
     @channel.emit @_event('update'), {method: method, docs: docs}
 
   _middle: (method, data, socket)=>
+    bl = true
     for mw in @_middlewares
-      mw(method, data, socket)
-    return
+      bl = bl and mw(method, data, socket)
+    return bl
 
   init: (io)=>
 
@@ -42,7 +43,8 @@ class API
 
       # C -----
       socket.on @_event('create'), (data, ack_cb)=>
-        @_middle('create', data, socket)
+        if not @_middle('create', data, socket)
+          return ack_cb('_middle error')
         if not (data.doc?)
           return ack_cb('no doc parameter')
         doc = data.doc
@@ -54,7 +56,8 @@ class API
 
       # U -----
       socket.on @_event('update'), (data, ack_cb)=>
-        @_middle('update', data, socket)
+        if not @_middle('update', data, socket)
+          return ack_cb('_middle error')
         conditions = data.conditions || {}
         update = data.update || {}
         options = data.options || {}
@@ -65,7 +68,8 @@ class API
       
       # D -----
       socket.on @_event('remove'), (data, ack_cb)=>
-        @_middle('remove', data, socket)
+        if not @_middle('remove', data, socket)
+          return ack_cb('_middle error')
         conditions = data.conditions || {}
         @model.remove conditions, (err)=>
           ack_cb(err)
@@ -74,7 +78,8 @@ class API
 
       # findOne -----
       socket.on @_event('findOne'), (data, ack_cb)=>
-        @_middle('findOne', data, socket)
+        if not @_middle('findOne', data, socket)
+          return ack_cb('_middle error')
         conditions = data.conditions || {}
         fields = data.fields || {}
         options = data.options || {}
@@ -84,7 +89,8 @@ class API
 
       # R -----
       socket.on @_event('find'), (data, ack_cb)=>
-        @_middle('find', data, socket)
+        if not @_middle('find', data, socket)
+          return ack_cb('_middle error')
         conditions = data.conditions || {}
         fields = data.fields || {}
         options = data.options || {}
@@ -109,7 +115,8 @@ class API
 
       # aggregate -----
       socket.on @_event('aggregate'), (data, ack_cb)=>
-        @_middle('aggregate', data, socket)
+        if not @_middle('aggregate', data, socket)
+          return ack_cb('_middle error')
         array = data.array || {}
         options = data.options || {}
         @model.aggregate array, options, (err, docs)=>
@@ -117,7 +124,8 @@ class API
 
       # count -----
       socket.on @_event('count'), (data, ack_cb)=>
-        @_middle('count', data, socket)
+        if not @_middle('count', data, socket)
+          return ack_cb('_middle error')
         conditions = data.conditions || {}
         @model.count conditions, (err, count)=>
           ack_cb(err, count)

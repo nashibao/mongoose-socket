@@ -42,12 +42,14 @@ API = (function() {
   };
 
   API.prototype._middle = function(method, data, socket) {
-    var mw, _i, _len, _ref;
+    var bl, mw, _i, _len, _ref;
+    bl = true;
     _ref = this._middlewares;
     for (_i = 0, _len = _ref.length; _i < _len; _i++) {
       mw = _ref[_i];
-      mw(method, data, socket);
+      bl = bl && mw(method, data, socket);
     }
+    return bl;
   };
 
   API.prototype.init = function(io) {
@@ -63,7 +65,9 @@ API = (function() {
     return this.channel.on('connection', function(socket) {
       socket.on(_this._event('create'), function(data, ack_cb) {
         var doc;
-        _this._middle('create', data, socket);
+        if (!_this._middle('create', data, socket)) {
+          return ack_cb('_middle error');
+        }
         if (!(data.doc != null)) {
           return ack_cb('no doc parameter');
         }
@@ -82,7 +86,9 @@ API = (function() {
       });
       socket.on(_this._event('update'), function(data, ack_cb) {
         var conditions, options, update;
-        _this._middle('update', data, socket);
+        if (!_this._middle('update', data, socket)) {
+          return ack_cb('_middle error');
+        }
         conditions = data.conditions || {};
         update = data.update || {};
         options = data.options || {};
@@ -99,7 +105,9 @@ API = (function() {
       });
       socket.on(_this._event('remove'), function(data, ack_cb) {
         var conditions;
-        _this._middle('remove', data, socket);
+        if (!_this._middle('remove', data, socket)) {
+          return ack_cb('_middle error');
+        }
         conditions = data.conditions || {};
         return _this.model.remove(conditions, function(err) {
           ack_cb(err);
@@ -113,7 +121,9 @@ API = (function() {
       });
       socket.on(_this._event('findOne'), function(data, ack_cb) {
         var conditions, fields, options;
-        _this._middle('findOne', data, socket);
+        if (!_this._middle('findOne', data, socket)) {
+          return ack_cb('_middle error');
+        }
         conditions = data.conditions || {};
         fields = data.fields || {};
         options = data.options || {};
@@ -123,7 +133,9 @@ API = (function() {
       });
       socket.on(_this._event('find'), function(data, ack_cb) {
         var conditions, fields, limit, options, page;
-        _this._middle('find', data, socket);
+        if (!_this._middle('find', data, socket)) {
+          return ack_cb('_middle error');
+        }
         conditions = data.conditions || {};
         fields = data.fields || {};
         options = data.options || {};
@@ -151,7 +163,9 @@ API = (function() {
       });
       socket.on(_this._event('aggregate'), function(data, ack_cb) {
         var array, options;
-        _this._middle('aggregate', data, socket);
+        if (!_this._middle('aggregate', data, socket)) {
+          return ack_cb('_middle error');
+        }
         array = data.array || {};
         options = data.options || {};
         return _this.model.aggregate(array, options, function(err, docs) {
@@ -160,7 +174,9 @@ API = (function() {
       });
       return socket.on(_this._event('count'), function(data, ack_cb) {
         var conditions;
-        _this._middle('count', data, socket);
+        if (!_this._middle('count', data, socket)) {
+          return ack_cb('_middle error');
+        }
         conditions = data.conditions || {};
         return _this.model.count(conditions, function(err, count) {
           return ack_cb(err, count);
