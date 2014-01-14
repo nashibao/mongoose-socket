@@ -62,7 +62,7 @@ class API
         update = data.update || {}
         options = data.options || {}
         options.new = true
-        @model.update conditions, update, options, (err, ndoc)=>
+        @model.findOneAndUpdate conditions, update, options, (err, ndoc)=>
           ack_cb(err, ndoc)
           if not err
             @channel.emit @_event('update'), {method: 'update', doc: ndoc}

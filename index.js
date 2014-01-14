@@ -93,7 +93,7 @@ API = (function() {
         update = data.update || {};
         options = data.options || {};
         options["new"] = true;
-        return _this.model.update(conditions, update, options, function(err, ndoc) {
+        return _this.model.findOneAndUpdate(conditions, update, options, function(err, ndoc) {
           ack_cb(err, ndoc);
           if (!err) {
             return _this.channel.emit(_this._event('update'), {
