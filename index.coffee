@@ -61,10 +61,11 @@ class API
         conditions = data.conditions || {}
         update = data.update || {}
         options = data.options || {}
-        @model.update conditions, update, options, (err, numberAffected, raw)=>
-          ack_cb(err, numberAffected, raw)
+        options.new = true
+        @model.update conditions, update, options, (err, ndoc)=>
+          ack_cb(err, ndoc)
           if not err
-            @channel.emit @_event('update'), {method: 'update', numberAffected: numberAffected, raw: raw}
+            @channel.emit @_event('update'), {method: 'update', doc: ndoc}
       
       # D -----
       socket.on @_event('remove'), (data, ack_cb)=>

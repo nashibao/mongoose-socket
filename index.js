@@ -92,13 +92,13 @@ API = (function() {
         conditions = data.conditions || {};
         update = data.update || {};
         options = data.options || {};
-        return _this.model.update(conditions, update, options, function(err, numberAffected, raw) {
-          ack_cb(err, numberAffected, raw);
+        options["new"] = true;
+        return _this.model.update(conditions, update, options, function(err, ndoc) {
+          ack_cb(err, ndoc);
           if (!err) {
             return _this.channel.emit(_this._event('update'), {
               method: 'update',
-              numberAffected: numberAffected,
-              raw: raw
+              doc: ndoc
             });
           }
         });
