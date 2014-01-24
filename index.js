@@ -168,7 +168,7 @@ API = (function() {
         }
         array = data.array || {};
         options = data.options || {};
-        return _this.model.aggregate(array, options, function(err, docs) {
+        return _this.model.aggregate(array).exec(function(err, docs) {
           return ack_cb(err, docs);
         });
       });

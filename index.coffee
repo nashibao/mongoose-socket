@@ -120,7 +120,7 @@ class API
           return ack_cb('_middle error')
         array = data.array || {}
         options = data.options || {}
-        @model.aggregate array, options, (err, docs)=>
+        @model.aggregate(array).exec (err, docs)=>
           ack_cb(err, docs)
 
       # count -----
