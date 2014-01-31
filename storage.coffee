@@ -7,11 +7,11 @@ class Storage
     @handshake_parameter_name = options.handshake_parameter_name || '_session'
 
     # get handler
-    @get = options.data || (socket, data, cb)->
+    @get = options.get || (socket, data, cb)->
       cb(null, socket.handshake[@handshake_parameter_name])
 
     # set handler
-    @set = options.data || (socket, data, cb)->
+    @set = options.set || (socket, data, cb)->
       # 単純な上書き
       socket.handshake[@handshake_parameter_name] = data
       cb(null)
