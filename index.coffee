@@ -13,6 +13,15 @@ class API
     @_middlewares = options.middlewares || []
     @stream = false
 
+    @run = {}
+    for key in ['find', 'create', 'findOneAndUpdate', 'remove', 'findOne', 'count', 'find', 'aggregate']
+      @run[key] = @query(key)
+
+  query: (name)->
+    q = @model['__' + name] || @model[name]
+    q = q.bind(@model)
+    return q
+
   use: (middleware)=>
     @_middlewares.push(middleware)
 
@@ -34,7 +43,7 @@ class API
     @channel = @io.of('/socket_api_' + @name_space)
 
     if @use_stream
-      @stream = @model.find({}).tailable().stream()
+      @stream = @run['find']({}).tailable().stream()
 
       @stream.on 'data', (doc)=>
         @update('stream', [doc])
@@ -48,7 +57,7 @@ class API
         if not (data.doc?)
           return ack_cb('no doc parameter')
         doc = data.doc
-        @model.create doc, (err)=>
+        @run['create'] doc, (err)=>
           ack_cb(err)
           if not err
             if not @use_stream
@@ -62,7 +71,7 @@ class API
         update = data.update || {}
         options = data.options || {}
         options.new = true
-        @model.findOneAndUpdate conditions, update, options, (err, ndoc)=>
+        @run['findOneAndUpdate'] conditions, update, options, (err, ndoc)=>
           ack_cb(err, ndoc)
           if not err
             @channel.emit @_event('update'), {method: 'update', doc: ndoc}
@@ -72,7 +81,7 @@ class API
         if not @_middle('remove', data, socket)
           return ack_cb('_middle error')
         conditions = data.conditions || {}
-        @model.remove conditions, (err)=>
+        @run['remove'] conditions, (err)=>
           ack_cb(err)
           if not err
             @channel.emit @_event('update'), {method: 'remove', conditions: conditions}
@@ -84,7 +93,7 @@ class API
         conditions = data.conditions || {}
         fields = data.fields || {}
         options = data.options || {}
-        @model.findOne conditions, fields, options, (err, doc)=>
+        @run['findOne'] conditions, fields, options, (err, doc)=>
           ack_cb(err, doc)
 
 
@@ -101,9 +110,9 @@ class API
         options['skip'] = page * @limit
         async.parallel [
           (cb)=>
-            @model.count conditions, cb
+            @run['count'] conditions, cb
           (cb)=>
-            @model.find conditions, fields, options, cb
+            @run['find'] conditions, fields, options, cb
         ], (err, results)=>
           cnt = results[0]
           docs = results[1]
@@ -120,7 +129,7 @@ class API
           return ack_cb('_middle error')
         array = data.array || {}
         options = data.options || {}
-        @model.aggregate(array).exec (err, docs)=>
+        @run['aggregate'](array).exec (err, docs)=>
           ack_cb(err, docs)
 
       # count -----
@@ -128,7 +137,7 @@ class API
         if not @_middle('count', data, socket)
           return ack_cb('_middle error')
         conditions = data.conditions || {}
-        @model.count conditions, (err, count)=>
+        @run['count'] conditions, (err, count)=>
           ack_cb(err, count)
 
 module.exports = API

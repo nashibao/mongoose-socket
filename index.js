@@ -9,6 +9,7 @@ async = require('async');
 
 API = (function() {
   function API(options) {
+    var key, _i, _len, _ref;
     if (options == null) {
       options = {};
     }
@@ -24,7 +25,20 @@ API = (function() {
     this.limit = options.limit || 10;
     this._middlewares = options.middlewares || [];
     this.stream = false;
+    this.run = {};
+    _ref = ['find', 'create', 'findOneAndUpdate', 'remove', 'findOne', 'count', 'find', 'aggregate'];
+    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+      key = _ref[_i];
+      this.run[key] = this.query(key);
+    }
   }
+
+  API.prototype.query = function(name) {
+    var q;
+    q = this.model['__' + name] || this.model[name];
+    q = q.bind(this.model);
+    return q;
+  };
 
   API.prototype.use = function(middleware) {
     return this._middlewares.push(middleware);
@@ -56,7 +70,7 @@ API = (function() {
     this.io = io;
     this.channel = this.io.of('/socket_api_' + this.name_space);
     if (this.use_stream) {
-      this.stream = this.model.find({}).tailable().stream();
+      this.stream = this.run['find']({}).tailable().stream();
       this.stream.on('data', (function(_this) {
         return function(doc) {
           return _this.update('stream', [doc]);
@@ -74,7 +88,7 @@ API = (function() {
             return ack_cb('no doc parameter');
           }
           doc = data.doc;
-          return _this.model.create(doc, function(err) {
+          return _this.run['create'](doc, function(err) {
             ack_cb(err);
             if (!err) {
               if (!_this.use_stream) {
@@ -95,7 +109,7 @@ API = (function() {
           update = data.update || {};
           options = data.options || {};
           options["new"] = true;
-          return _this.model.findOneAndUpdate(conditions, update, options, function(err, ndoc) {
+          return _this.run['findOneAndUpdate'](conditions, update, options, function(err, ndoc) {
             ack_cb(err, ndoc);
             if (!err) {
               return _this.channel.emit(_this._event('update'), {
@@ -111,7 +125,7 @@ API = (function() {
             return ack_cb('_middle error');
           }
           conditions = data.conditions || {};
-          return _this.model.remove(conditions, function(err) {
+          return _this.run['remove'](conditions, function(err) {
             ack_cb(err);
             if (!err) {
               return _this.channel.emit(_this._event('update'), {
@@ -129,7 +143,7 @@ API = (function() {
           conditions = data.conditions || {};
           fields = data.fields || {};
           options = data.options || {};
-          return _this.model.findOne(conditions, fields, options, function(err, doc) {
+          return _this.run['findOne'](conditions, fields, options, function(err, doc) {
             return ack_cb(err, doc);
           });
         });
@@ -147,9 +161,9 @@ API = (function() {
           options['skip'] = page * _this.limit;
           return async.parallel([
             function(cb) {
-              return _this.model.count(conditions, cb);
+              return _this.run['count'](conditions, cb);
             }, function(cb) {
-              return _this.model.find(conditions, fields, options, cb);
+              return _this.run['find'](conditions, fields, options, cb);
             }
           ], function(err, results) {
             var cnt, docs;
@@ -170,7 +184,7 @@ API = (function() {
           }
           array = data.array || {};
           options = data.options || {};
-          return _this.model.aggregate(array).exec(function(err, docs) {
+          return _this.run['aggregate'](array).exec(function(err, docs) {
             return ack_cb(err, docs);
           });
         });
@@ -180,7 +194,7 @@ API = (function() {
             return ack_cb('_middle error');
           }
           conditions = data.conditions || {};
-          return _this.model.count(conditions, function(err, count) {
+          return _this.run['count'](conditions, function(err, count) {
             return ack_cb(err, count);
           });
         });
