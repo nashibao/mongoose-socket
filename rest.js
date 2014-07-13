@@ -56,9 +56,10 @@ API = (function() {
     }
     doc = query.doc || {};
     return this.model.create(doc, (function(_this) {
-      return function(err) {
+      return function(err, ndoc) {
         return res.send({
-          err: err
+          err: err,
+          doc: ndoc
         });
       };
     })(this));

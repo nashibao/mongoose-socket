@@ -35,8 +35,8 @@ class API
     for middleware in @_middlewares
       query = middleware(query, req, res, 'create')
     doc = query.doc || {}
-    @model.create doc, (err)=>
-      res.send {err: err}
+    @model.create doc, (err, ndoc)=>
+      res.send {err: err, doc: ndoc}
 
   # U
   update: (req, res) =>

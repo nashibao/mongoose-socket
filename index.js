@@ -88,13 +88,13 @@ API = (function() {
             return ack_cb('no doc parameter');
           }
           doc = data.doc;
-          return _this.run['create'](doc, function(err) {
-            ack_cb(err);
+          return _this.run['create'](doc, function(err, ndoc) {
+            ack_cb(err, ndoc);
             if (!err) {
               if (!_this.use_stream) {
                 return _this.channel.emit(_this._event('update'), {
                   method: 'create',
-                  docs: [doc]
+                  docs: [ndoc]
                 });
               }
             }

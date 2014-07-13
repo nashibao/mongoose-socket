@@ -57,11 +57,11 @@ class API
         if not (data.doc?)
           return ack_cb('no doc parameter')
         doc = data.doc
-        @run['create'] doc, (err)=>
-          ack_cb(err)
+        @run['create'] doc, (err, ndoc)=>
+          ack_cb(err, ndoc)
           if not err
             if not @use_stream
-              @channel.emit @_event('update'), {method: 'create', docs: [doc]}
+              @channel.emit @_event('update'), {method: 'create', docs: [ndoc]}
 
       # U -----
       socket.on @_event('update'), (data, ack_cb)=>
