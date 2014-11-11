@@ -9,12 +9,12 @@ Storage = (function() {
     this.init = __bind(this.init, this);
     this._event = __bind(this._event, this);
     this.name_space = options.name_space || '';
-    this.handshake_parameter_name = options.handshake_parameter_name || '_session';
+    this.request_parameter_name = options.request_parameter_name || 'session';
     this.get = options.get || function(socket, data, cb) {
-      return cb(null, socket.handshake[this.handshake_parameter_name]);
+      return cb(null, socket.request[this.request_parameter_name]);
     };
     this.set = options.set || function(socket, data, cb) {
-      socket.handshake[this.handshake_parameter_name] = data;
+      socket.request[this.request_parameter_name] = data;
       return cb(null);
     };
   }

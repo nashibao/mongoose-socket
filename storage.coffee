@@ -4,16 +4,16 @@
 class Storage
   constructor: (options={})->
     @name_space = options.name_space || ''
-    @handshake_parameter_name = options.handshake_parameter_name || '_session'
+    @request_parameter_name = options.request_parameter_name || 'session'
 
     # get handler
     @get = options.get || (socket, data, cb)->
-      cb(null, socket.handshake[@handshake_parameter_name])
+      cb(null, socket.request[@request_parameter_name])
 
     # set handler
     @set = options.set || (socket, data, cb)->
       # 単純な上書き
-      socket.handshake[@handshake_parameter_name] = data
+      socket.request[@request_parameter_name] = data
       cb(null)
 
   _event: (name)=>
